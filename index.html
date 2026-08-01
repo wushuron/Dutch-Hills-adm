@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="description" content="Ritten & Uren Tracker - km's en uren per order">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ritten">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%231e293b' width='180' height='180'/><text x='90' y='125' font-size='95' fill='%2360a5fa' text-anchor='middle' font-family='Arial'>🚐</text></svg>">
+    <title>🚐 Ritten & Uren Tracker</title>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%; width: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 600px; margin: 0 auto; padding: 1rem;
+            min-height: 100vh; display: flex; flex-direction: column;
+        }
+
+        .header { margin-bottom: 1.5rem; padding-top: 0.5rem; }
+        .header h1 { font-size: 1.9rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .header p { color: #94a3b8; font-size: 0.9rem; }
+
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card.backup { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.05); }
+        .card.address { border-color: #f59e0b; background: rgba(245, 158, 11, 0.04); }
+        .card.order { border-color: #10b981; background: rgba(16, 185, 129, 0.04); }
+
+        .order-chip {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 0.5rem;
+            padding: 0.75rem 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .order-chip .chip-name {
+            flex: 1; cursor: pointer; font-weight: 600; color: #e2e8f0; font-size: 0.95rem;
+            padding: 0.25rem 0;
+        }
+        .order-chip .chip-actions { display: flex; gap: 0.3rem; }
+        .order-chip .chip-actions button { width: auto; padding: 0.3rem 0.5rem; font-size: 0.75rem; margin-bottom: 0; }
+
+
+        .input-group { margin-bottom: 1rem; position: relative; }
+        .input-group:last-child { margin-bottom: 0; }
+        .input-group label {
+            display: block; font-size: 0.875rem; font-weight: 600;
+            color: #cbd5e1; margin-bottom: 0.5rem;
+        }
+
+        input, select {
+            width: 100%; padding: 0.75rem;
+            background: #1e293b; border: 1px solid #475569;
+            border-radius: 0.5rem; color: white; font-size: 1rem;
+        }
+
+        input:focus, select:focus {
+            outline: none; border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        input[type="checkbox"] { width: auto; margin-right: 0.5rem; cursor: pointer; }
+        input[type="file"] { padding: 0.5rem; font-size: 0.875rem; }
+
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+        .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+
+        button {
+            width: 100%; padding: 0.75rem;
+            background: #3b82f6; color: white; border: none;
+            border-radius: 0.5rem; font-weight: 600; font-size: 1rem;
+            cursor: pointer; margin-bottom: 0.5rem;
+        }
+        button:hover:not(:disabled) { background: #2563eb; }
+        button:disabled { background: #475569; opacity: 0.5; cursor: not-allowed; }
+
+        .btn-secondary { background: #64748b; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-export { background: #8b5cf6; }
+        .btn-export:hover { background: #7c3aed; }
+        .btn-small { width: auto; padding: 0.4rem 0.75rem; font-size: 0.85rem; margin-bottom: 0; }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .btn-group button { margin-bottom: 0; font-size: 0.9rem; padding: 0.6rem; }
+
+        h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; }
+        h3 { font-size: 0.95rem; font-weight: 600; margin: 1.25rem 0 0.75rem 0; color: #cbd5e1; }
+
+        .fab {
+            position: sticky; bottom: 0; z-index: 5;
+            background: #10b981; font-size: 1.05rem; padding: 1rem;
+            border-radius: 0.75rem; margin: 0 0 1rem 0;
+            box-shadow: 0 4px 20px rgba(16,185,129,0.35);
+        }
+        .fab:hover { background: #059669; }
+
+        .entry-row {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid #475569;
+            border-radius: 0.6rem;
+            padding: 0.85rem;
+            margin-bottom: 0.6rem;
+        }
+        .entry-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+        .entry-order { font-weight: 600; font-size: 1rem; color: #e2e8f0; }
+        .entry-date { font-size: 0.75rem; color: #94a3b8; margin-top: 0.15rem; }
+        .entry-total { font-weight: 700; color: #60a5fa; font-size: 1rem; white-space: nowrap; }
+        .entry-meta { display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.8rem; color: #94a3b8; flex-wrap: wrap; }
+        .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+        .entry-actions button { margin-bottom: 0; }
+
+        .empty-state {
+            text-align: center; color: #64748b; font-size: 0.875rem;
+            padding: 1.5rem 0.5rem;
+        }
+
+        .suggestions {
+            position: absolute; left: 0; right: 0; top: 100%;
+            background: #1e293b; border: 1px solid #3b82f6;
+            border-radius: 0.5rem; margin-top: 0.25rem;
+            z-index: 20; overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        .suggestion-item {
+            padding: 0.65rem 0.75rem; font-size: 0.875rem;
+            cursor: pointer; border-bottom: 1px solid #334155;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover, .suggestion-item:active { background: #334155; }
+        .suggestion-item .s-name { color: #e2e8f0; font-weight: 600; }
+        .suggestion-item .s-km { color: #f59e0b; font-size: 0.8rem; }
+
+        .checkbox-group {
+            display: flex; align-items: center; padding: 0.75rem;
+            background: rgba(30, 41, 59, 0.7); border: 1px solid #475569;
+            border-radius: 0.5rem; margin-bottom: 1rem;
+        }
+        .checkbox-group label { display: flex; align-items: center; cursor: pointer; margin-bottom: 0; font-size: 0.875rem; flex: 1; }
+
+        .addr-table { width: 100%; font-size: 0.85rem; margin-bottom: 1rem; border-collapse: collapse; }
+        .addr-table th { text-align: left; color: #94a3b8; font-weight: 600; padding: 0.4rem 0.3rem; border-bottom: 1px solid #475569; }
+        .addr-table td { padding: 0.5rem 0.3rem; border-bottom: 1px solid #334155; vertical-align: middle; }
+        .addr-table .abbr-tag { background: rgba(245,158,11,0.15); color: #f59e0b; padding: 0.15rem 0.4rem; border-radius: 0.3rem; font-size: 0.75rem; font-weight: 600; }
+        .addr-table .addr-actions { display: flex; gap: 0.3rem; }
+        .addr-table .addr-actions button { width: auto; padding: 0.3rem 0.5rem; font-size: 0.75rem; margin-bottom: 0; }
+
+        .totals-block {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 0.5rem; padding: 0.75rem 0.9rem; margin-bottom: 0.5rem;
+        }
+        .totals-block .t-title { font-weight: 600; color: #e2e8f0; margin-bottom: 0.4rem; font-size: 0.9rem; }
+        .totals-block .t-line { display: flex; justify-content: space-between; font-size: 0.82rem; color: #94a3b8; padding: 0.1rem 0; }
+        .totals-block .t-line b { color: #60a5fa; }
+
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem; }
+        .stat-box { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); border-radius: 0.5rem; padding: 0.75rem; text-align: center; }
+        .stat-label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 0.25rem; }
+        .stat-value { font-size: 1.25rem; font-weight: bold; color: #10b981; }
+
+        .day-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 0.75rem;
+        }
+        .nav-btn {
+            background: #10b981; padding: 0.5rem 1rem; font-size: 1.4rem;
+            width: auto; margin-bottom: 0;
+        }
+        .nav-btn:hover:not(:disabled) { background: #059669; }
+        .day-info { text-align: center; flex: 1; margin: 0 1rem; }
+        .day-info-date { font-size: 1.2rem; font-weight: bold; color: #34d399; }
+        .day-info-weekday { font-size: 0.8rem; color: #94a3b8; text-transform: capitalize; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 50;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+            align-items: flex-end; justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #1e293b; border: 1px solid #475569;
+            border-radius: 1rem 1rem 0 0;
+            padding: 1.5rem; width: 100%; max-width: 600px;
+            max-height: 92vh; overflow-y: auto;
+        }
+        @media (min-width: 640px) {
+            .modal-overlay { align-items: center; }
+            .modal-box { border-radius: 1rem; }
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .modal-header h2 { margin-bottom: 0; }
+        .close-btn {
+            width: auto; background: transparent; color: #94a3b8;
+            font-size: 1.5rem; padding: 0 0.5rem; margin-bottom: 0; line-height: 1;
+        }
+        .close-btn:hover { color: white; background: transparent; }
+
+        .modal-footer { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal-footer button { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚐 Ritten & Uren</h1>
+            <p>Km's en uren per order — facturatie & boekhouding</p>
+        </div>
+
+        <!-- Jaar -->
+        <div class="card">
+            <h2>📅 Jaar</h2>
+            <div class="input-group" style="margin-bottom:0;">
+                <label for="yearSelect">Voor totalen &amp; export</label>
+                <input type="number" id="yearSelect" onchange="updateYear()">
+            </div>
+        </div>
+
+        <!-- Orders -->
+        <div class="card order">
+            <h2>📁 Mijn orders</h2>
+            <div id="orderChips"></div>
+            <h3 id="orderFormTitle" style="margin-top:1rem;">Nieuwe order</h3>
+            <div class="input-group">
+                <label for="orderNaamInput">Naam</label>
+                <input type="text" id="orderNaamInput" placeholder="Klant X - installatie">
+            </div>
+            <div class="input-group" style="margin-bottom:0.75rem;">
+                <label for="orderAddressSelect">Vast adres (optioneel, voor auto-km)</label>
+                <select id="orderAddressSelect">
+                    <option value="">Geen (handmatig invullen)</option>
+                </select>
+            </div>
+            <button id="orderSaveBtn" onclick="saveOrderForm()">➕ Order toevoegen</button>
+            <button id="orderCancelBtn" class="btn-secondary" onclick="cancelOrderEdit()" style="display:none;">Annuleren</button>
+        </div>
+
+        <!-- Dagoverzicht -->
+        <div class="card">
+            <h2>📋 Dagoverzicht</h2>
+            <div class="day-nav">
+                <button class="nav-btn" id="prevDayBtn" onclick="goToPreviousDay()">◀</button>
+                <div class="day-info">
+                    <div class="day-info-date" id="currentDayDisplay">-</div>
+                    <div class="day-info-weekday" id="currentWeekdayDisplay">-</div>
+                </div>
+                <button class="nav-btn" id="nextDayBtn" onclick="goToNextDay()">▶</button>
+            </div>
+            <div id="dayEntryList"></div>
+            <button style="background:#10b981; margin-top:0.5rem;" onclick="openEntryModal()">➕ Regel toevoegen op deze dag</button>
+        </div>
+
+        <!-- Totalen per order -->
+        <div class="card">
+            <h2>🧾 Totalen per order dit jaar</h2>
+            <div id="orderTotals"></div>
+        </div>
+
+        <!-- Totalen periode (boekhouding) -->
+        <div class="card">
+            <h2>📊 Totaal dit jaar</h2>
+            <div class="stats">
+                <div class="stat-box"><div class="stat-label">Km's</div><div class="stat-value" id="periodKm">0</div></div>
+                <div class="stat-box"><div class="stat-label">Uren</div><div class="stat-value" id="periodUren">0</div></div>
+            </div>
+        </div>
+
+        <!-- Adresboek -->
+        <div class="card address">
+            <h2>📍 Adresboek</h2>
+            <table class="addr-table">
+                <thead><tr><th>Naam</th><th>Afk.</th><th>Km enkel</th><th></th></tr></thead>
+                <tbody id="addressTableBody"></tbody>
+            </table>
+            <h3 style="margin-top:0.5rem;">Nieuw adres</h3>
+            <div class="row3">
+                <div class="input-group" style="margin-bottom:0;">
+                    <label for="newAddrNaam">Naam</label>
+                    <input type="text" id="newAddrNaam" placeholder="Hornbach">
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label for="newAddrAfk">Afkorting</label>
+                    <input type="text" id="newAddrAfk" placeholder="horn">
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label for="newAddrKm">Km enkel</label>
+                    <input type="number" id="newAddrKm" step="0.1" min="0" placeholder="4.7">
+                </div>
+            </div>
+            <button onclick="addAddress()" style="margin-top:0.75rem;">➕ Toevoegen</button>
+        </div>
+
+        <!-- Backup & Export -->
+        <div class="card backup">
+            <h2>💾 Backup & Export</h2>
+            <div class="btn-group">
+                <button class="btn-export" onclick="exportJSON()">📥 JSON Export</button>
+                <button class="btn-export" onclick="exportCSV()">📊 Excel Export</button>
+            </div>
+            <div class="input-group" style="margin-bottom:0;">
+                <label for="importFile">JSON Importeren</label>
+                <input type="file" id="importFile" accept=".json" onchange="importJSON(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: nieuwe/bewerk regel -->
+    <div class="modal-overlay" id="entryModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="modalTitle">Nieuwe regel</h2>
+                <button class="close-btn" onclick="closeEntryModal()">✕</button>
+            </div>
+
+            <div class="input-group">
+                <label for="entryDate">Datum</label>
+                <input type="date" id="entryDate">
+            </div>
+
+            <div class="input-group">
+                <label for="entryOrder">Order / klant</label>
+                <input type="text" id="entryOrder" list="orderDatalist" placeholder="Klant X - installatie">
+                <datalist id="orderDatalist"></datalist>
+            </div>
+
+            <div class="input-group">
+                <label for="entryLocatie">Locatie (voor km, typ afkorting of naam)</label>
+                <input type="text" id="entryLocatie" placeholder="bijv. horn" autocomplete="off"
+                    oninput="showLocationSuggestions()" onfocus="showLocationSuggestions()">
+                <div class="suggestions" id="locationSuggestions" style="display:none;"></div>
+            </div>
+
+            <div class="checkbox-group">
+                <label for="entryRetour">
+                    <input type="checkbox" id="entryRetour" checked onchange="recalcKmFromMatch()">
+                    🔁 Retour rit (km wordt verdubbeld)
+                </label>
+            </div>
+
+            <div class="row2">
+                <div class="input-group" style="margin-bottom:0;">
+                    <label for="entryKm">Km</label>
+                    <input type="number" id="entryKm" step="0.1" min="0" placeholder="0">
+                </div>
+                <div class="input-group" style="margin-bottom:0;">
+                    <label for="entryUren">Uren</label>
+                    <input type="number" id="entryUren" step="0.25" min="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="entryOmschrijving">Omschrijving (optioneel)</label>
+                <input type="text" id="entryOmschrijving" placeholder="">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeEntryModal()">Annuleren</button>
+                <button style="background:#10b981;" onclick="saveEntryFromModal()">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------- State ----------
+        let entries = [];
+        let addressBook = [];
+        let orders = [];
+
+        let periodStartStr = null;
+        let periodEndStr = null;
+        let currentDay = null;
+
+        let editingId = null;
+        let matchedAddress = null;
+        let editingOrderId = null;
+
+        // ---------- Utils ----------
+        function uid() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function toDateStr(d) {
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        }
+
+        // ---------- Persistence ----------
+        function loadData() {
+            entries = JSON.parse(localStorage.getItem('ritten_entries_v1') || '[]');
+            addressBook = JSON.parse(localStorage.getItem('ritten_adresboek_v1') || '[]');
+            orders = JSON.parse(localStorage.getItem('ritten_orders_v1') || '[]');
+
+            const today = new Date();
+            document.getElementById('yearSelect').value = today.getFullYear();
+            currentDay = toDateStr(today);
+            updateYear();
+        }
+
+        function saveEntries() { localStorage.setItem('ritten_entries_v1', JSON.stringify(entries)); }
+        function saveAddressBook() { localStorage.setItem('ritten_adresboek_v1', JSON.stringify(addressBook)); }
+        function saveOrders() { localStorage.setItem('ritten_orders_v1', JSON.stringify(orders)); }
+
+        // ---------- Jaar & dag-navigatie ----------
+        function updateYear() {
+            const year = parseInt(document.getElementById('yearSelect').value);
+            periodStartStr = `${year}-01-01`;
+            periodEndStr = `${year}-12-31`;
+
+            // dag-navigatie binnen het gekozen jaar houden
+            if (currentDay < periodStartStr) currentDay = periodStartStr;
+            if (currentDay > periodEndStr) currentDay = periodEndStr;
+
+            renderAll();
+        }
+
+        function shiftDay(delta) {
+            const d = new Date(currentDay + 'T00:00:00');
+            d.setDate(d.getDate() + delta);
+            const newStr = toDateStr(d);
+            if (newStr < periodStartStr || newStr > periodEndStr) return;
+            currentDay = newStr;
+            renderAll();
+        }
+
+        function goToPreviousDay() { shiftDay(-1); }
+        function goToNextDay() { shiftDay(1); }
+
+        function inPeriod(dateStr) {
+            return dateStr >= periodStartStr && dateStr <= periodEndStr;
+        }
+
+        function getYearEntries() {
+            return entries
+                .filter(e => inPeriod(e.date))
+                .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        }
+
+        function getDayEntries() {
+            return entries.filter(e => e.date === currentDay);
+        }
+
+        // ---------- Render: alles ----------
+        function renderAll() {
+            renderOrderChips();
+            renderOrderAddressSelect();
+            renderDayNavHeader();
+            renderDayEntryList();
+            renderOrderTotals();
+            renderPeriodTotals();
+            renderAddressTable();
+        }
+
+        function renderDayNavHeader() {
+            const d = new Date(currentDay + 'T00:00:00');
+            document.getElementById('currentDayDisplay').textContent = currentDay;
+            document.getElementById('currentWeekdayDisplay').textContent =
+                d.toLocaleDateString('nl-NL', { weekday: 'long' });
+            document.getElementById('prevDayBtn').disabled = currentDay <= periodStartStr;
+            document.getElementById('nextDayBtn').disabled = currentDay >= periodEndStr;
+        }
+
+        function renderDayEntryList() {
+            const list = getDayEntries();
+            const container = document.getElementById('dayEntryList');
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nog niks ingevuld op deze dag.</div>';
+                return;
+            }
+
+            container.innerHTML = list.map(e => `
+                <div class="entry-row">
+                    <div class="entry-top">
+                        <div>
+                            <div class="entry-order">${escapeHtml(e.order)}</div>
+                            ${e.locatie ? '<div class="entry-date">' + escapeHtml(e.locatie) + '</div>' : ''}
+                        </div>
+                    </div>
+                    <div class="entry-meta">
+                        <span>🚗 ${(e.km || 0).toFixed(1)} km</span>
+                        <span>⏱ ${(e.uren || 0).toFixed(2)} u</span>
+                    </div>
+                    <div class="entry-actions">
+                        <button class="btn-secondary btn-small" onclick="openEntryModal('${e.id}')">✏️ Bewerken</button>
+                        <button class="btn-danger btn-small" onclick="deleteEntry('${e.id}')">🗑 Verwijderen</button>
+                    </div>
+                </div>`
+            ).join('');
+        }
+
+        function renderOrderTotals() {
+            const list = getYearEntries();
+            const container = document.getElementById('orderTotals');
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nog geen data voor dit jaar.</div>';
+                return;
+            }
+
+            const groups = {};
+            list.forEach(e => {
+                const key = e.order.trim();
+                if (!groups[key]) groups[key] = { km: 0, uren: 0 };
+                groups[key].km += e.km || 0;
+                groups[key].uren += e.uren || 0;
+            });
+
+            const orderNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+            container.innerHTML = orderNames.map(name => {
+                const g = groups[name];
+                return `
+                <div class="totals-block">
+                    <div class="t-title">${escapeHtml(name)}</div>
+                    <div class="t-line"><span>Km</span><b>${g.km.toFixed(1)} km</b></div>
+                    <div class="t-line"><span>Uren</span><b>${g.uren.toFixed(2)} u</b></div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderPeriodTotals() {
+            const list = getYearEntries();
+            let km = 0, uren = 0;
+            list.forEach(e => {
+                km += e.km || 0;
+                uren += e.uren || 0;
+            });
+            document.getElementById('periodKm').textContent = km.toFixed(1);
+            document.getElementById('periodUren').textContent = uren.toFixed(2);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        // ---------- Entry modal ----------
+        function openEntryModal(id, presetOrderId) {
+            editingId = id || null;
+            matchedAddress = null;
+
+            // datalist met unieke ordernamen vullen (uit orders + eerder gebruikte namen)
+            const knownNames = new Set(orders.map(o => o.naam));
+            entries.forEach(e => knownNames.add(e.order));
+            const uniqueOrders = [...knownNames].sort();
+            document.getElementById('orderDatalist').innerHTML =
+                uniqueOrders.map(o => `<option value="${escapeHtml(o)}"></option>`).join('');
+
+            if (editingId) {
+                const e = entries.find(x => x.id === editingId);
+                document.getElementById('modalTitle').textContent = 'Regel bewerken';
+                document.getElementById('entryDate').value = e.date;
+                document.getElementById('entryOrder').value = e.order;
+                document.getElementById('entryLocatie').value = e.locatie || '';
+                document.getElementById('entryRetour').checked = true;
+                document.getElementById('entryKm').value = e.km;
+                document.getElementById('entryUren').value = e.uren;
+                document.getElementById('entryOmschrijving').value = e.omschrijving || '';
+            } else {
+                const preset = presetOrderId ? orders.find(o => o.id === presetOrderId) : null;
+                document.getElementById('modalTitle').textContent = preset ? preset.naam : 'Nieuwe regel';
+                document.getElementById('entryDate').value = currentDay || toDateStr(new Date());
+                document.getElementById('entryOrder').value = preset ? preset.naam : '';
+                document.getElementById('entryRetour').checked = true;
+                document.getElementById('entryKm').value = '';
+                document.getElementById('entryUren').value = '';
+                document.getElementById('entryOmschrijving').value = '';
+
+                if (preset && preset.addressId) {
+                    const addr = addressBook.find(a => a.id === preset.addressId);
+                    if (addr) {
+                        document.getElementById('entryLocatie').value = addr.naam;
+                        matchedAddress = addr;
+                        recalcKmFromMatch();
+                    } else {
+                        document.getElementById('entryLocatie').value = '';
+                    }
+                } else {
+                    document.getElementById('entryLocatie').value = '';
+                }
+            }
+
+            hideLocationSuggestions();
+            document.getElementById('entryModal').classList.add('active');
+        }
+
+        function closeEntryModal() {
+            document.getElementById('entryModal').classList.remove('active');
+            editingId = null;
+            matchedAddress = null;
+        }
+
+        function saveEntryFromModal() {
+            const order = document.getElementById('entryOrder').value.trim();
+            if (!order) { alert('Vul een order/klant in.'); return; }
+
+            const entry = {
+                id: editingId || uid(),
+                date: document.getElementById('entryDate').value || toDateStr(new Date()),
+                order: order,
+                locatie: document.getElementById('entryLocatie').value.trim(),
+                km: parseFloat(document.getElementById('entryKm').value) || 0,
+                uren: parseFloat(document.getElementById('entryUren').value) || 0,
+                omschrijving: document.getElementById('entryOmschrijving').value.trim()
+            };
+
+            if (editingId) {
+                const idx = entries.findIndex(x => x.id === editingId);
+                entries[idx] = entry;
+            } else {
+                entries.push(entry);
+            }
+
+            saveEntries();
+            closeEntryModal();
+            renderAll();
+        }
+
+        function deleteEntry(id) {
+            if (!confirm('Deze regel verwijderen?')) return;
+            entries = entries.filter(e => e.id !== id);
+            saveEntries();
+            renderAll();
+        }
+
+        // ---------- Locatie autocomplete ----------
+        function showLocationSuggestions() {
+            const val = document.getElementById('entryLocatie').value.trim().toLowerCase();
+            const box = document.getElementById('locationSuggestions');
+
+            if (!val) { hideLocationSuggestions(); return; }
+
+            const matches = addressBook.filter(a =>
+                a.afkorting.toLowerCase().includes(val) || a.naam.toLowerCase().includes(val)
+            ).slice(0, 5);
+
+            if (matches.length === 0) { hideLocationSuggestions(); return; }
+
+            box.innerHTML = matches.map(a => `
+                <div class="suggestion-item" onmousedown="selectLocation('${a.id}')">
+                    <span class="s-name">${escapeHtml(a.naam)}</span>
+                    <span class="abbr-tag" style="margin-left:0.4rem;">${escapeHtml(a.afkorting)}</span><br>
+                    <span class="s-km">${a.kmEnkel} km enkel</span>
+                </div>`).join('');
+            box.style.display = 'block';
+        }
+
+        function hideLocationSuggestions() {
+            const box = document.getElementById('locationSuggestions');
+            box.style.display = 'none';
+            box.innerHTML = '';
+        }
+
+        function selectLocation(addressId) {
+            const a = addressBook.find(x => x.id === addressId);
+            if (!a) return;
+            document.getElementById('entryLocatie').value = a.naam;
+            matchedAddress = a;
+            recalcKmFromMatch();
+            hideLocationSuggestions();
+        }
+
+        function recalcKmFromMatch() {
+            if (!matchedAddress) return;
+            const retour = document.getElementById('entryRetour').checked;
+            const km = matchedAddress.kmEnkel * (retour ? 2 : 1);
+            document.getElementById('entryKm').value = km.toFixed(1);
+        }
+
+        // ---------- Adresboek ----------
+        function renderAddressTable() {
+            const tbody = document.getElementById('addressTableBody');
+            if (addressBook.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b; padding:0.75rem 0.3rem;">Nog geen adressen toegevoegd.</td></tr>';
+                return;
+            }
+            const sorted = [...addressBook].sort((a, b) => a.naam.localeCompare(b.naam));
+            tbody.innerHTML = sorted.map(a => `
+                <tr>
+                    <td>${escapeHtml(a.naam)}</td>
+                    <td><span class="abbr-tag">${escapeHtml(a.afkorting)}</span></td>
+                    <td>${a.kmEnkel} km</td>
+                    <td class="addr-actions">
+                        <button class="btn-secondary" onclick="editAddress('${a.id}')">✏️</button>
+                        <button class="btn-danger" onclick="deleteAddress('${a.id}')">🗑</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function addAddress() {
+            const naam = document.getElementById('newAddrNaam').value.trim();
+            const afkorting = document.getElementById('newAddrAfk').value.trim();
+            const kmEnkel = parseFloat(document.getElementById('newAddrKm').value);
+
+            if (!naam || !afkorting || isNaN(kmEnkel)) {
+                alert('Vul naam, afkorting en km enkele reis in.');
+                return;
+            }
+
+            const dupe = addressBook.some(a => a.afkorting.toLowerCase() === afkorting.toLowerCase());
+            if (dupe) {
+                alert('Deze afkorting bestaat al. Kies een unieke afkorting.');
+                return;
+            }
+
+            addressBook.push({ id: uid(), naam, afkorting, kmEnkel });
+            saveAddressBook();
+            document.getElementById('newAddrNaam').value = '';
+            document.getElementById('newAddrAfk').value = '';
+            document.getElementById('newAddrKm').value = '';
+            renderAddressTable();
+            renderOrderAddressSelect();
+        }
+
+        function editAddress(id) {
+            const a = addressBook.find(x => x.id === id);
+            if (!a) return;
+            const naam = prompt('Naam:', a.naam);
+            if (naam === null) return;
+            const afkorting = prompt('Afkorting:', a.afkorting);
+            if (afkorting === null) return;
+            const kmEnkelStr = prompt('Km enkele reis:', a.kmEnkel);
+            if (kmEnkelStr === null) return;
+            const kmEnkel = parseFloat(kmEnkelStr);
+
+            if (!naam.trim() || !afkorting.trim() || isNaN(kmEnkel)) {
+                alert('Ongeldige invoer.');
+                return;
+            }
+            const dupe = addressBook.some(x => x.id !== id && x.afkorting.toLowerCase() === afkorting.trim().toLowerCase());
+            if (dupe) {
+                alert('Deze afkorting bestaat al bij een ander adres.');
+                return;
+            }
+
+            a.naam = naam.trim();
+            a.afkorting = afkorting.trim();
+            a.kmEnkel = kmEnkel;
+            saveAddressBook();
+            renderAddressTable();
+            renderOrderAddressSelect();
+            renderOrderChips();
+        }
+
+        function deleteAddress(id) {
+            if (!confirm('Dit adres verwijderen? Orders die dit adres gebruikten, verliezen de auto-km koppeling.')) return;
+            addressBook = addressBook.filter(a => a.id !== id);
+            orders.forEach(o => { if (o.addressId === id) o.addressId = null; });
+            saveAddressBook();
+            saveOrders();
+            renderAddressTable();
+            renderOrderAddressSelect();
+            renderOrderChips();
+        }
+
+        // ---------- Orders ----------
+        function renderOrderChips() {
+            const container = document.getElementById('orderChips');
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding:0.5rem 0;">Nog geen orders. Voeg er hieronder één toe.</div>';
+                return;
+            }
+            const sorted = [...orders].sort((a, b) => a.naam.localeCompare(b.naam));
+            container.innerHTML = sorted.map(o => {
+                const addr = o.addressId ? addressBook.find(a => a.id === o.addressId) : null;
+                return `
+                <div class="order-chip">
+                    <span class="chip-name" onclick="openEntryModal(null, '${o.id}')">
+                        ${escapeHtml(o.naam)}${addr ? '<br><span style="font-size:0.72rem; color:#f59e0b; font-weight:400;">📍 ' + escapeHtml(addr.naam) + '</span>' : ''}
+                    </span>
+                    <div class="chip-actions">
+                        <button class="btn-secondary" onclick="editOrder('${o.id}')">✏️</button>
+                        <button class="btn-danger" onclick="deleteOrder('${o.id}')">🗑</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderOrderAddressSelect() {
+            const select = document.getElementById('orderAddressSelect');
+            const currentVal = select.value;
+            const sorted = [...addressBook].sort((a, b) => a.naam.localeCompare(b.naam));
+            select.innerHTML = '<option value="">Geen (handmatig invullen)</option>' +
+                sorted.map(a => `<option value="${a.id}">${escapeHtml(a.naam)} (${escapeHtml(a.afkorting)})</option>`).join('');
+            if (sorted.some(a => a.id === currentVal)) select.value = currentVal;
+        }
+
+        function saveOrderForm() {
+            const naam = document.getElementById('orderNaamInput').value.trim();
+            const addressId = document.getElementById('orderAddressSelect').value || null;
+            if (!naam) { alert('Vul een ordernaam in.'); return; }
+
+            const dupe = orders.some(o => o.id !== editingOrderId && o.naam.toLowerCase() === naam.toLowerCase());
+            if (dupe) { alert('Deze order bestaat al.'); return; }
+
+            if (editingOrderId) {
+                const o = orders.find(x => x.id === editingOrderId);
+                o.naam = naam;
+                o.addressId = addressId;
+            } else {
+                orders.push({ id: uid(), naam, addressId });
+            }
+
+            saveOrders();
+            cancelOrderEdit();
+            renderOrderChips();
+        }
+
+        function editOrder(id) {
+            const o = orders.find(x => x.id === id);
+            if (!o) return;
+            editingOrderId = id;
+            document.getElementById('orderFormTitle').textContent = 'Order bewerken';
+            document.getElementById('orderNaamInput').value = o.naam;
+            renderOrderAddressSelect();
+            document.getElementById('orderAddressSelect').value = o.addressId || '';
+            document.getElementById('orderSaveBtn').textContent = '💾 Bijwerken';
+            document.getElementById('orderCancelBtn').style.display = 'block';
+        }
+
+        function cancelOrderEdit() {
+            editingOrderId = null;
+            document.getElementById('orderFormTitle').textContent = 'Nieuwe order';
+            document.getElementById('orderNaamInput').value = '';
+            document.getElementById('orderAddressSelect').value = '';
+            document.getElementById('orderSaveBtn').textContent = '➕ Order toevoegen';
+            document.getElementById('orderCancelBtn').style.display = 'none';
+        }
+
+        function deleteOrder(id) {
+            if (!confirm('Deze order verwijderen? Bestaande regels blijven gewoon staan.')) return;
+            orders = orders.filter(o => o.id !== id);
+            saveOrders();
+            if (editingOrderId === id) cancelOrderEdit();
+            renderOrderChips();
+        }
+
+        // ---------- Export / Import ----------
+        function exportJSON() {
+            const data = { entries, addressBook, orders };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ritten-tracker-backup-${toDateStr(new Date())}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.entries) entries = imported.entries;
+                    if (imported.addressBook) addressBook = imported.addressBook;
+                    if (imported.orders) orders = imported.orders;
+                    saveEntries();
+                    saveAddressBook();
+                    saveOrders();
+                    alert('✓ Gegevens succesvol geïmporteerd!');
+                    location.reload();
+                } catch (err) {
+                    alert('❌ Fout bij importeren. Zorg dat het een geldig JSON-bestand is.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function csvEscape(val) {
+            const str = String(val ?? '');
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+
+        function exportCSV() {
+            const year = document.getElementById('yearSelect').value;
+            const list = getYearEntries(); // al gesorteerd op datum
+
+            let csv = `Ritten & Uren Tracker - Jaaroverzicht ${year}\n\n`;
+            csv += 'Datum,Order,Locatie,Km,Uren\n';
+
+            let totKm = 0, totUren = 0;
+            const groups = {};
+            list.forEach(e => {
+                totKm += e.km || 0;
+                totUren += e.uren || 0;
+                csv += [
+                    e.date, csvEscape(e.order), csvEscape(e.locatie || ''),
+                    (e.km || 0).toFixed(2), (e.uren || 0).toFixed(2)
+                ].join(',') + '\n';
+
+                const key = e.order.trim();
+                if (!groups[key]) groups[key] = { km: 0, uren: 0 };
+                groups[key].km += e.km || 0;
+                groups[key].uren += e.uren || 0;
+            });
+
+            // Totalen per order (klant) voor het hele jaar
+            csv += `\n\nTotalen per order ${year}\n`;
+            csv += 'Order,Km,Uren\n';
+            Object.keys(groups).sort((a, b) => a.localeCompare(b)).forEach(name => {
+                const g = groups[name];
+                csv += `${csvEscape(name)},${g.km.toFixed(2)},${g.uren.toFixed(2)}\n`;
+            });
+
+            // Eindtotaal van alle orders samen
+            csv += `\n\nTotaal alle orders ${year}\n`;
+            csv += 'Km,Uren\n';
+            csv += `${totKm.toFixed(2)},${totUren.toFixed(2)}\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ritten-tracker-jaaroverzicht-${year}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Klik buiten suggesties sluit ze
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#entryLocatie') && !e.target.closest('#locationSuggestions')) {
+                hideLocationSuggestions();
+            }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
