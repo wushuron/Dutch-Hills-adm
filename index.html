@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Km & Uren Tracker per Order">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Km&Uren">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<title>🚗 Km &amp; Uren Tracker</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+    height:100%; width:100%;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color:white;
+}
+.bg-logo {
+    position:fixed;
+    inset:0;
+    background-image:url('dutch-hills-logo.jpg');
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:min(85%, 520px);
+    opacity:0.9;
+    z-index:0;
+    pointer-events:none;
+}
+.container { max-width:640px; margin:0 auto; padding:1rem; min-height:100vh; position:relative; z-index:1; }
+.header { margin-bottom:1.5rem; padding-top:.5rem; }
+.header h1 { font-size:1.9rem; font-weight:bold; margin-bottom:.25rem; color:#0f172a; }
+.header p { color:#475569; font-size:.9rem; }
+
+.card {
+    background: rgba(30,41,59,.5);
+    backdrop-filter: blur(10px);
+    border:1px solid #334155;
+    border-radius:.75rem;
+    padding:1.25rem;
+    margin-bottom:1rem;
+}
+.card.export { border-color:#8b5cf6; background:rgba(139,92,246,.05); }
+.card.unassigned { border-color:#f59e0b; background:rgba(245,158,11,.05); }
+
+h2 { font-size:1.15rem; font-weight:600; margin-bottom:1rem; }
+h3 { font-size:.95rem; font-weight:600; margin:1rem 0 .5rem; color:#ffffff; }
+
+.input-group { margin-bottom:.9rem; }
+.input-group label { display:block; font-size:.8rem; font-weight:600; color:#ffffff; margin-bottom:.4rem; }
+input, select {
+    width:100%; padding:.7rem; background:#1e293b; border:1px solid #475569;
+    border-radius:.5rem; color:white; font-size:1rem;
+}
+input:focus, select:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.1); }
+input::placeholder { color:#64748b; }
+
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:.7rem; }
+.row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.7rem; }
+
+button {
+    width:100%; padding:.7rem; background:#3b82f6; color:white; border:none;
+    border-radius:.5rem; font-weight:600; font-size:.95rem; cursor:pointer; margin-bottom:.5rem;
+}
+button:hover { background:#2563eb; }
+button.secondary { background:#475569; }
+button.secondary:hover { background:#334155; }
+button.success { background:#10b981; }
+button.success:hover { background:#059669; }
+button.danger { background:#ef4444; padding:.5rem; font-size:.8rem; width:auto; }
+button.danger:hover { background:#dc2626; }
+button.export-btn { background:#8b5cf6; }
+button.export-btn:hover { background:#7c3aed; }
+button.small { width:auto; padding:.45rem .8rem; font-size:.8rem; margin:0; }
+
+.btn-group { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
+.btn-group button { margin-bottom:0; }
+
+.order-list { display:flex; flex-direction:column; gap:.5rem; }
+.order-pill {
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.3);
+    border-radius:.5rem; padding:.75rem 1rem; cursor:pointer;
+}
+.order-pill:hover { background:rgba(59,130,246,.18); }
+.order-pill .name { font-weight:600; }
+.order-pill .meta { font-size:.75rem; color:#ffffff; }
+
+.breakdown-table { width:100%; border-collapse:collapse; font-size:.85rem; margin-bottom:.5rem; }
+.breakdown-table th, .breakdown-table td { text-align:left; padding:.5rem .4rem; border-bottom:1px solid #334155; }
+.breakdown-table th { color:#ffffff; font-weight:600; font-size:.75rem; text-transform:uppercase; }
+.breakdown-table tr.total-row td { font-weight:700; color:#60a5fa; border-top:2px solid #475569; border-bottom:none; }
+.breakdown-table td.num { text-align:right; }
+
+.entry-row {
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(30,41,59,.7); border:1px solid #475569; border-radius:.5rem;
+    padding:.6rem .8rem; margin-bottom:.4rem; font-size:.85rem;
+}
+.entry-row .left { flex:1; }
+.entry-row .type-tag {
+    display:inline-block; background:rgba(96,165,250,.15); color:#60a5fa;
+    font-size:.7rem; font-weight:700; padding:.15rem .5rem; border-radius:.3rem; margin-right:.4rem;
+}
+.entry-row .type-tag.unassigned { background:rgba(245,158,11,.15); color:#f59e0b; }
+.entry-row .details { color:#ffffff; font-size:.75rem; }
+
+.modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+    z-index:100; align-items:flex-start; justify-content:center; overflow-y:auto; padding:1rem;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+    background:#1e293b; border:1px solid #475569; border-radius:.75rem;
+    padding:1.5rem; max-width:480px; width:100%; margin-top:2rem;
+}
+.modal h2 { display:flex; justify-content:space-between; align-items:center; }
+.modal-close { cursor:pointer; color:#ffffff; font-size:1.3rem; line-height:1; background:none; width:auto; padding:0; margin:0; }
+
+.addr-list, .type-list { display:flex; flex-direction:column; gap:.4rem; margin-bottom:1rem; }
+.addr-row, .type-row {
+    display:grid; grid-template-columns:1fr 2fr 1fr auto; gap:.5rem; align-items:center;
+    background:rgba(30,41,59,.7); border:1px solid #475569; border-radius:.5rem; padding:.5rem .7rem; font-size:.85rem;
+}
+.type-row { grid-template-columns:1fr 2fr auto; }
+.addr-row .code, .type-row .code { font-weight:700; color:#60a5fa; }
+
+.year-select { display:flex; gap:.5rem; align-items:center; margin-bottom:1rem; }
+.year-select select { flex:1; }
+
+.empty-hint { color:#ffffff; font-size:.85rem; text-align:center; padding:1rem 0; }
+
+summary { cursor:pointer; list-style:none; }
+summary::-webkit-details-marker { display:none; }
+summary::before { content:'▶ '; color:#ffffff; font-size:.9rem; }
+details[open] summary::before { content:'▼ '; }
+
+datalist {}
+</style>
+</head>
+<body>
+<div class="bg-logo"></div>
+<div class="container">
+    <div class="header">
+        <h1>🚗 Km &amp; Uren Tracker</h1>
+        <p>Per order: uren, km, werkzaamheden en kosten</p>
+    </div>
+
+    <!-- Nieuwe invoer -->
+    <div class="card">
+        <h2>➕ Nieuwe invoer</h2>
+        <button class="success" onclick="openEntryModal()">Uren / km invullen</button>
+    </div>
+
+    <!-- Uren indelen (niet toegewezen) -->
+    <div class="card unassigned" id="unassignedCard" style="display:none;">
+        <h2>🗂️ Uren indelen</h2>
+        <p style="color:#ffffff; font-size:.8rem; margin-bottom:.75rem;">Deze invoer heeft nog geen werkzaamheid. Kies er zelf één.</p>
+        <div id="unassignedList"></div>
+    </div>
+
+    <!-- Orders -->
+    <div class="card">
+        <h2>📋 Orders</h2>
+        <div class="order-list" id="orderList"></div>
+        <div id="orderListEmpty" class="empty-hint">Nog geen orders. Voeg een invoer toe om te starten.</div>
+    </div>
+
+    <!-- Order detail -->
+    <div class="card" id="orderDetailCard" style="display:none;">
+        <h2 id="orderDetailTitle">📦 Order</h2>
+        <table class="breakdown-table" id="orderBreakdownTable"></table>
+        <h3>Alle invoer bij deze order</h3>
+        <div id="orderEntriesList"></div>
+        <button class="secondary" onclick="closeOrderDetail()">Sluiten</button>
+    </div>
+
+    <!-- Jaaroverzicht -->
+    <div class="card">
+        <h2>📊 Jaaroverzicht</h2>
+        <div class="year-select">
+            <select id="yearOverviewSelect" onchange="renderYearOverview()"></select>
+        </div>
+        <table class="breakdown-table" id="yearOverviewTable"></table>
+    </div>
+
+    <!-- Adresboek -->
+    <div class="card">
+        <details id="addrDetails">
+            <summary><h2 style="display:inline-block; margin-bottom:0;">📍 Adresboek</h2></summary>
+            <div style="margin-top:1rem;">
+                <div class="addr-list" id="addrList"></div>
+                <div class="row3">
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Afkorting</label>
+                        <input id="newAddrCode" placeholder="bv. JS">
+                    </div>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Naam</label>
+                        <input id="newAddrName" placeholder="Klantnaam / plaats">
+                    </div>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Km (enkel)</label>
+                        <input id="newAddrKm" type="number" step="0.1" placeholder="12.5">
+                    </div>
+                </div>
+                <button onclick="addAddress()">Toevoegen</button>
+            </div>
+        </details>
+    </div>
+
+    <!-- Werkzaamheden beheren -->
+    <div class="card">
+        <details id="typeDetails">
+            <summary><h2 style="display:inline-block; margin-bottom:0;">🛠️ Werkzaamheden</h2></summary>
+            <div style="margin-top:1rem;">
+                <div class="type-list" id="typeList"></div>
+                <div class="row2">
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Afkorting</label>
+                        <input id="newTypeCode" placeholder="bv. Bood">
+                    </div>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Omschrijving</label>
+                        <input id="newTypeName" placeholder="bv. Boodschappen">
+                    </div>
+                </div>
+                <button onclick="addWorktype()">Toevoegen</button>
+            </div>
+        </details>
+    </div>
+
+    <!-- Backup & Export -->
+    <div class="card export">
+        <h2>💾 Backup &amp; Export</h2>
+        <div class="btn-group">
+            <button class="export-btn" onclick="exportJSON()">📥 JSON Backup</button>
+            <button class="export-btn" onclick="promptInvoiceExport()">🧾 Factuur CSV</button>
+        </div>
+        <div class="btn-group">
+            <button class="export-btn" onclick="exportBookkeepingCSV()">📊 Boekhouding CSV (jaar)</button>
+            <button class="secondary" onclick="document.getElementById('importFile').click()">📤 JSON Importeren</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)">
+    </div>
+</div>
+
+<!-- Entry modal -->
+<div class="modal-overlay" id="entryModalOverlay">
+    <div class="modal">
+        <h2>📝 Uren / km invullen <button class="modal-close" onclick="closeEntryModal()">✕</button></h2>
+
+        <div class="input-group">
+            <label for="entryOrder">Order</label>
+            <input id="entryOrder" list="orderDatalist" placeholder="Ordernaam (nieuw of bestaand)">
+            <datalist id="orderDatalist"></datalist>
+        </div>
+
+        <div class="row2">
+            <div class="input-group">
+                <label for="entryDate">Datum</label>
+                <input type="date" id="entryDate">
+            </div>
+            <div class="input-group">
+                <label for="entryType">Werkzaamheid</label>
+                <select id="entryType"></select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="entryLocation">Locatie (afkorting adresboek)</label>
+            <input id="entryLocation" list="addrDatalist" placeholder="bv. JS (vult km automatisch aan)" oninput="onLocationInput()">
+            <datalist id="addrDatalist"></datalist>
+        </div>
+
+        <div class="row2">
+            <div class="input-group">
+                <label for="entryHours">Uren</label>
+                <input type="number" id="entryHours" step="0.25" min="0" placeholder="0">
+            </div>
+            <div class="input-group">
+                <label for="entryKm">Km (retour)</label>
+                <input type="number" id="entryKm" step="0.1" min="0" placeholder="0">
+            </div>
+        </div>
+
+        <div class="row2">
+            <div class="input-group">
+                <label for="entryRate">Uurtarief (€)</label>
+                <input type="number" id="entryRate" step="0.5" min="0" placeholder="0">
+            </div>
+            <div class="input-group">
+                <label for="entryMaterial">Materiaalkosten (€)</label>
+                <input type="number" id="entryMaterial" step="0.5" min="0" placeholder="0">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="entryNote">Notitie (optioneel)</label>
+            <input id="entryNote" placeholder="Omschrijving">
+        </div>
+
+        <button class="success" onclick="saveEntry()">💾 Opslaan</button>
+        <button class="secondary" onclick="closeEntryModal()">Annuleren</button>
+    </div>
+</div>
+
+<script>
+// ---------- Data ----------
+const K_ENTRIES = 'kmuren_entries_v1';
+const K_ADDR = 'kmuren_addressbook_v1';
+const K_TYPES = 'kmuren_worktypes_v1';
+const K_ORDERS = 'kmuren_orders_v1';
+
+const DEFAULT_TYPES = [
+    { code:'Ls', name:'Lassen' },
+    { code:'Mon', name:'Montage' },
+    { code:'Rij', name:'Rijden' },
+    { code:'Tek', name:'Tekenen' },
+    { code:'Con', name:'Constructie thuis' },
+    { code:'Wvb', name:'Werkvoorbereiding' },
+    { code:'Bood', name:'Boodschappen' }
+];
+
+let entries = [];
+let addressBook = {};
+let worktypes = [];
+let knownOrders = [];
+let currentOrder = null;
+
+function loadAll() {
+    entries = JSON.parse(localStorage.getItem(K_ENTRIES) || '[]');
+    addressBook = JSON.parse(localStorage.getItem(K_ADDR) || '{}');
+    worktypes = JSON.parse(localStorage.getItem(K_TYPES) || 'null') || DEFAULT_TYPES.slice();
+    knownOrders = JSON.parse(localStorage.getItem(K_ORDERS) || '[]');
+    if (!localStorage.getItem(K_TYPES)) saveTypes();
+    migrateFromOldRittenTracker();
+}
+
+// Eenmalige overname van gegevens uit de eerdere "Ritten & Uren Tracker"
+// (localStorage keys: ritten_entries_v1 / ritten_adresboek_v1 / ritten_orders_v1).
+// Draait maar één keer, zodat later verwijderde regels niet terugkomen.
+function migrateFromOldRittenTracker() {
+    if (localStorage.getItem('kmuren_migrated_v1')) return;
+
+    const oldEntriesRaw = localStorage.getItem('ritten_entries_v1');
+    const oldAddrRaw = localStorage.getItem('ritten_adresboek_v1');
+    const oldOrdersRaw = localStorage.getItem('ritten_orders_v1');
+
+    if (oldEntriesRaw) {
+        try {
+            const oldEntries = JSON.parse(oldEntriesRaw) || [];
+            oldEntries.forEach(o => {
+                entries.push({
+                    id: o.id || ('mig' + Date.now() + Math.random().toString(36).slice(2,7)),
+                    order: o.order || 'Onbekende order',
+                    date: o.date || new Date().toISOString().split('T')[0],
+                    type: '',
+                    location: o.locatie || '',
+                    hours: parseFloat(o.uren) || 0,
+                    km: parseFloat(o.km) || 0,
+                    rate: 0,
+                    material: 0,
+                    note: o.omschrijving || ''
+                });
+                if (o.order) registerOrder(o.order);
+            });
+        } catch (e) { /* corrupte oude data, negeren */ }
+    }
+
+    if (oldAddrRaw) {
+        try {
+            const oldAddr = JSON.parse(oldAddrRaw) || [];
+            oldAddr.forEach(a => {
+                if (a.afkorting) {
+                    addressBook[a.afkorting] = { name: a.naam || '', km: parseFloat(a.km_enkel) || 0 };
+                }
+            });
+        } catch (e) { /* negeren */ }
+    }
+
+    if (oldOrdersRaw) {
+        try {
+            const oldOrders = JSON.parse(oldOrdersRaw) || [];
+            oldOrders.forEach(o => registerOrder(typeof o === 'string' ? o : (o.name || o.naam || '')));
+        } catch (e) { /* negeren */ }
+    }
+
+    saveEntries();
+    saveAddress();
+    localStorage.setItem('kmuren_migrated_v1', '1');
+}
+
+function saveEntries() { localStorage.setItem(K_ENTRIES, JSON.stringify(entries)); }
+function saveAddress() { localStorage.setItem(K_ADDR, JSON.stringify(addressBook)); }
+function saveTypes() { localStorage.setItem(K_TYPES, JSON.stringify(worktypes)); }
+function saveOrders() { localStorage.setItem(K_ORDERS, JSON.stringify(knownOrders)); }
+
+function registerOrder(name) {
+    if (name && !knownOrders.includes(name)) {
+        knownOrders.push(name);
+        saveOrders();
+    }
+}
+
+// ---------- Entry modal ----------
+function openEntryModal(prefillOrder) {
+    document.getElementById('entryOrder').value = prefillOrder || '';
+    document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('entryLocation').value = '';
+    document.getElementById('entryHours').value = '';
+    document.getElementById('entryKm').value = '';
+    document.getElementById('entryRate').value = '';
+    document.getElementById('entryMaterial').value = '';
+    document.getElementById('entryNote').value = '';
+    renderTypeSelect();
+    renderDatalists();
+    document.getElementById('entryModalOverlay').classList.add('open');
+}
+
+function closeEntryModal() {
+    document.getElementById('entryModalOverlay').classList.remove('open');
+}
+
+function renderTypeSelect() {
+    const sel = document.getElementById('entryType');
+    sel.innerHTML = '<option value="">— geen keuze —</option>' +
+        worktypes.map(t => `<option value="${t.code}">${t.code} — ${t.name}</option>`).join('');
+}
+
+function renderDatalists() {
+    document.getElementById('orderDatalist').innerHTML =
+        knownOrders.map(o => `<option value="${o}">`).join('');
+    document.getElementById('addrDatalist').innerHTML =
+        Object.keys(addressBook).map(code => `<option value="${code}">`).join('');
+}
+
+function onLocationInput() {
+    const code = document.getElementById('entryLocation').value.trim();
+    const match = Object.keys(addressBook).find(c => c.toLowerCase() === code.toLowerCase());
+    if (match) {
+        const kmEnkel = addressBook[match].km;
+        document.getElementById('entryKm').value = (kmEnkel * 2).toFixed(1);
+    }
+}
+
+function saveEntry() {
+    const order = document.getElementById('entryOrder').value.trim();
+    if (!order) { alert('Vul een ordernaam in.'); return; }
+
+    const entry = {
+        id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
+        order: order,
+        date: document.getElementById('entryDate').value || new Date().toISOString().split('T')[0],
+        type: document.getElementById('entryType').value || '',
+        location: document.getElementById('entryLocation').value.trim(),
+        hours: parseFloat(document.getElementById('entryHours').value) || 0,
+        km: parseFloat(document.getElementById('entryKm').value) || 0,
+        rate: parseFloat(document.getElementById('entryRate').value) || 0,
+        material: parseFloat(document.getElementById('entryMaterial').value) || 0,
+        note: document.getElementById('entryNote').value.trim()
+    };
+
+    entries.push(entry);
+    saveEntries();
+    registerOrder(order);
+    closeEntryModal();
+    renderAll();
+}
+
+// ---------- Uren indelen ----------
+function renderUnassigned() {
+    const unassigned = entries.filter(e => !e.type);
+    const card = document.getElementById('unassignedCard');
+    const list = document.getElementById('unassignedList');
+    if (unassigned.length === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    card.style.display = 'block';
+    list.innerHTML = unassigned.map(e => `
+        <div class="entry-row">
+            <div class="left">
+                <strong>${e.order}</strong> — ${e.date} — ${e.hours.toFixed(2)}u
+                ${e.km ? ' · ' + e.km.toFixed(1) + 'km' : ''}
+            </div>
+            <select onchange="assignType('${e.id}', this.value)" style="width:auto;">
+                <option value="">Kies type…</option>
+                ${worktypes.map(t => `<option value="${t.code}">${t.code} — ${t.name}</option>`).join('')}
+            </select>
+        </div>
+    `).join('');
+}
+
+function assignType(entryId, code) {
+    if (!code) return;
+    const e = entries.find(x => x.id === entryId);
+    if (e) { e.type = code; saveEntries(); renderAll(); }
+}
+
+// ---------- Orders ----------
+function getOrderNames() {
+    const names = new Set(knownOrders);
+    entries.forEach(e => names.add(e.order));
+    return Array.from(names).sort();
+}
+
+function renderOrderList() {
+    const names = getOrderNames();
+    const list = document.getElementById('orderList');
+    const emptyHint = document.getElementById('orderListEmpty');
+    if (names.length === 0) {
+        list.innerHTML = '';
+        emptyHint.style.display = 'block';
+        return;
+    }
+    emptyHint.style.display = 'none';
+    list.innerHTML = names.map(name => {
+        const orderEntries = entries.filter(e => e.order === name);
+        const totalHours = orderEntries.reduce((s,e) => s + e.hours, 0);
+        const totalKm = orderEntries.reduce((s,e) => s + e.km, 0);
+        return `<div class="order-pill" onclick="selectOrder('${escapeJs(name)}')">
+            <div>
+                <div class="name">${name}</div>
+                <div class="meta">${orderEntries.length} invoer(en)</div>
+            </div>
+            <div class="meta">${totalHours.toFixed(2)}u · ${totalKm.toFixed(1)}km</div>
+        </div>`;
+    }).join('');
+}
+
+function escapeJs(str) { return str.replace(/'/g, "\\'"); }
+
+function selectOrder(name) {
+    currentOrder = name;
+    renderOrderDetail();
+    document.getElementById('orderDetailCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function closeOrderDetail() {
+    currentOrder = null;
+    document.getElementById('orderDetailCard').style.display = 'none';
+}
+
+function computeTotalsForEntries(list) {
+    const byType = {};
+    let totalHours = 0, totalKm = 0, totalCost = 0;
+    list.forEach(e => {
+        const key = e.type || '—';
+        if (!byType[key]) byType[key] = { hours:0, km:0, cost:0 };
+        const cost = e.hours * e.rate + e.material;
+        byType[key].hours += e.hours;
+        byType[key].km += e.km;
+        byType[key].cost += cost;
+        totalHours += e.hours;
+        totalKm += e.km;
+        totalCost += cost;
+    });
+    return { byType, totalHours, totalKm, totalCost };
+}
+
+function typeName(code) {
+    const t = worktypes.find(t => t.code === code);
+    return t ? `${t.code} — ${t.name}` : (code || 'Niet ingedeeld');
+}
+
+function renderOrderDetail() {
+    const card = document.getElementById('orderDetailCard');
+    if (!currentOrder) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('orderDetailTitle').textContent = '📦 ' + currentOrder;
+
+    const orderEntries = entries.filter(e => e.order === currentOrder);
+    const totals = computeTotalsForEntries(orderEntries);
+
+    let html = '<tr><th>Werkzaamheid</th><th class="num">Uren</th><th class="num">Km</th><th class="num">Kosten</th></tr>';
+    Object.keys(totals.byType).sort().forEach(key => {
+        const t = totals.byType[key];
+        html += `<tr><td>${typeName(key)}</td><td class="num">${t.hours.toFixed(2)}u</td><td class="num">${t.km.toFixed(1)}km</td><td class="num">€${t.cost.toFixed(2)}</td></tr>`;
+    });
+    html += `<tr class="total-row"><td>Totaal</td><td class="num">${totals.totalHours.toFixed(2)}u</td><td class="num">${totals.totalKm.toFixed(1)}km</td><td class="num">€${totals.totalCost.toFixed(2)}</td></tr>`;
+    document.getElementById('orderBreakdownTable').innerHTML = html;
+
+    document.getElementById('orderEntriesList').innerHTML = orderEntries
+        .slice().sort((a,b) => a.date.localeCompare(b.date))
+        .map(e => `
+        <div class="entry-row">
+            <div class="left">
+                <span class="type-tag ${e.type ? '' : 'unassigned'}">${e.type || '?'}</span>
+                ${e.date} — ${e.hours.toFixed(2)}u${e.km ? ' · ' + e.km.toFixed(1) + 'km' : ''}
+                ${e.note ? '<div class="details">' + e.note + '</div>' : ''}
+            </div>
+        </div>
+    `).join('') || '<div class="empty-hint">Geen invoer.</div>';
+}
+
+// ---------- Jaaroverzicht ----------
+function getAvailableYears() {
+    const years = new Set(entries.map(e => e.date.slice(0,4)));
+    years.add(String(new Date().getFullYear()));
+    return Array.from(years).sort().reverse();
+}
+
+function renderYearSelect() {
+    const sel = document.getElementById('yearOverviewSelect');
+    const current = sel.value;
+    const years = getAvailableYears();
+    sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    if (years.includes(current)) sel.value = current;
+}
+
+function renderYearOverview() {
+    const year = document.getElementById('yearOverviewSelect').value || String(new Date().getFullYear());
+    const yearEntries = entries.filter(e => e.date.slice(0,4) === year);
+    const totals = computeTotalsForEntries(yearEntries);
+
+    let html = '<tr><th>Werkzaamheid</th><th class="num">Uren</th><th class="num">Km</th><th class="num">Kosten</th></tr>';
+    Object.keys(totals.byType).sort().forEach(key => {
+        const t = totals.byType[key];
+        html += `<tr><td>${typeName(key)}</td><td class="num">${t.hours.toFixed(2)}u</td><td class="num">${t.km.toFixed(1)}km</td><td class="num">€${t.cost.toFixed(2)}</td></tr>`;
+    });
+    html += `<tr class="total-row"><td>Totaal ${year}</td><td class="num">${totals.totalHours.toFixed(2)}u</td><td class="num">${totals.totalKm.toFixed(1)}km</td><td class="num">€${totals.totalCost.toFixed(2)}</td></tr>`;
+    document.getElementById('yearOverviewTable').innerHTML = html;
+}
+
+// ---------- Adresboek ----------
+function renderAddressBook() {
+    const list = document.getElementById('addrList');
+    const codes = Object.keys(addressBook).sort();
+    if (codes.length === 0) { list.innerHTML = '<div class="empty-hint">Nog geen locaties.</div>'; return; }
+    list.innerHTML = codes.map(code => {
+        const a = addressBook[code];
+        return `<div class="addr-row">
+            <div class="code">${code}</div>
+            <div>${a.name}</div>
+            <div>${a.km.toFixed(1)}km enkel</div>
+            <button class="danger" onclick="removeAddress('${escapeJs(code)}')">✕</button>
+        </div>`;
+    }).join('');
+}
+
+function addAddress() {
+    const code = document.getElementById('newAddrCode').value.trim();
+    const name = document.getElementById('newAddrName').value.trim();
+    const km = parseFloat(document.getElementById('newAddrKm').value);
+    if (!code || !name || isNaN(km)) { alert('Vul afkorting, naam en km in.'); return; }
+    addressBook[code] = { name, km };
+    saveAddress();
+    document.getElementById('newAddrCode').value = '';
+    document.getElementById('newAddrName').value = '';
+    document.getElementById('newAddrKm').value = '';
+    renderAll();
+}
+
+function removeAddress(code) {
+    delete addressBook[code];
+    saveAddress();
+    renderAll();
+}
+
+// ---------- Werkzaamheden ----------
+function renderWorktypes() {
+    const list = document.getElementById('typeList');
+    list.innerHTML = worktypes.map(t => `
+        <div class="type-row">
+            <div class="code">${t.code}</div>
+            <div>${t.name}</div>
+            <button class="danger" onclick="removeWorktype('${escapeJs(t.code)}')">✕</button>
+        </div>
+    `).join('');
+}
+
+function addWorktype() {
+    const code = document.getElementById('newTypeCode').value.trim();
+    const name = document.getElementById('newTypeName').value.trim();
+    if (!code || !name) { alert('Vul afkorting en omschrijving in.'); return; }
+    if (worktypes.some(t => t.code.toLowerCase() === code.toLowerCase())) { alert('Deze afkorting bestaat al.'); return; }
+    worktypes.push({ code, name });
+    saveTypes();
+    document.getElementById('newTypeCode').value = '';
+    document.getElementById('newTypeName').value = '';
+    renderAll();
+}
+
+function removeWorktype(code) {
+    const inUse = entries.some(e => e.type === code);
+    if (inUse && !confirm('Dit type wordt nog gebruikt in bestaande invoer. Toch verwijderen? (invoer blijft staan met dit type)')) return;
+    worktypes = worktypes.filter(t => t.code !== code);
+    saveTypes();
+    renderAll();
+}
+
+// ---------- Export / Import ----------
+function exportJSON() {
+    const data = { entries, addressBook, worktypes, knownOrders };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kmuren-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            entries = data.entries || [];
+            addressBook = data.addressBook || {};
+            worktypes = data.worktypes || DEFAULT_TYPES.slice();
+            knownOrders = data.knownOrders || [];
+            saveEntries(); saveAddress(); saveTypes(); saveOrders();
+            alert('✓ Gegevens geïmporteerd!');
+            location.reload();
+        } catch (err) {
+            alert('❌ Fout bij importeren. Controleer of het een geldig JSON-bestand is.');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function promptInvoiceExport() {
+    const names = getOrderNames();
+    if (names.length === 0) { alert('Nog geen orders om te exporteren.'); return; }
+    const choice = prompt('Voor welke order wil je een factuur-CSV maken?\n\n' + names.join('\n'));
+    if (!choice) return;
+    const match = names.find(n => n.toLowerCase() === choice.trim().toLowerCase());
+    if (!match) { alert('Order niet gevonden.'); return; }
+    exportInvoiceCSV(match);
+}
+
+function exportInvoiceCSV(orderName) {
+    const orderEntries = entries.filter(e => e.order === orderName).sort((a,b) => a.date.localeCompare(b.date));
+    let csv = `Factuur specificatie\nOrder: ${orderName}\n\n`;
+    csv += 'Datum,Werkzaamheid,Uren,Uurtarief,Km,Materiaalkosten,Kosten,Notitie\n';
+    let totalHours = 0, totalKm = 0, totalCost = 0;
+    orderEntries.forEach(e => {
+        const cost = e.hours * e.rate + e.material;
+        totalHours += e.hours; totalKm += e.km; totalCost += cost;
+        csv += `${e.date},"${typeName(e.type)}",${e.hours.toFixed(2)},${e.rate.toFixed(2)},${e.km.toFixed(1)},${e.material.toFixed(2)},${cost.toFixed(2)},"${e.note}"\n`;
+    });
+    csv += `TOTAAL,,${totalHours.toFixed(2)},,${totalKm.toFixed(1)},,${totalCost.toFixed(2)},\n`;
+    downloadCSV(csv, `factuur-${orderName.replace(/[^a-z0-9]/gi,'_')}.csv`);
+}
+
+function exportBookkeepingCSV() {
+    const year = document.getElementById('yearOverviewSelect').value || String(new Date().getFullYear());
+    const yearEntries = entries.filter(e => e.date.slice(0,4) === year);
+
+    let csv = `Boekhouding overzicht ${year}\n\n`;
+    csv += 'Maand,' + worktypes.map(t => t.code + ' (u)').join(',') + ',Totaal uren,Totaal km,Totaal kosten\n';
+
+    const monthNames = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+    for (let m = 0; m < 12; m++) {
+        const monthStr = String(m+1).padStart(2,'0');
+        const monthEntries = yearEntries.filter(e => e.date.slice(5,7) === monthStr);
+        const totals = computeTotalsForEntries(monthEntries);
+        const perType = worktypes.map(t => (totals.byType[t.code] ? totals.byType[t.code].hours : 0).toFixed(2));
+        csv += `${monthNames[m]},${perType.join(',')},${totals.totalHours.toFixed(2)},${totals.totalKm.toFixed(1)},${totals.totalCost.toFixed(2)}\n`;
+    }
+
+    const yearTotals = computeTotalsForEntries(yearEntries);
+    const yearPerType = worktypes.map(t => (yearTotals.byType[t.code] ? yearTotals.byType[t.code].hours : 0).toFixed(2));
+    csv += `TOTAAL,${yearPerType.join(',')},${yearTotals.totalHours.toFixed(2)},${yearTotals.totalKm.toFixed(1)},${yearTotals.totalCost.toFixed(2)}\n`;
+
+    downloadCSV(csv, `boekhouding-${year}.csv`);
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ---------- Master render ----------
+function renderAll() {
+    renderUnassigned();
+    renderOrderList();
+    renderOrderDetail();
+    renderYearSelect();
+    renderYearOverview();
+    renderAddressBook();
+    renderWorktypes();
+}
+
+loadAll();
+renderAll();
+</script>
+</body>
+</html>
